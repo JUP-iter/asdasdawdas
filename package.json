@@ -1,0 +1,38 @@
+{
+  "name": "madebyaibek",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "concurrently -n API,WEB -c green,cyan \"npm:dev:server\" \"npm:dev:web\"",
+    "dev:web": "vite",
+    "dev:server": "tsx server/index.ts",
+    "start": "node server-dist/index.js",
+    "build:server": "tsc -p tsconfig.server.json",
+    "build": "tsc -b && vite build && npm run build:server",
+    "preview": "vite preview",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@vitejs/plugin-react": "latest",
+    "vite": "latest",
+    "typescript": "latest",
+    "react": "latest",
+    "react-dom": "latest",
+    "react-router-dom": "latest",
+    "lucide-react": "latest",
+    "express": "latest",
+    "cookie-parser": "latest",
+    "zod": "latest"
+  },
+  "devDependencies": {
+    "@types/react": "latest",
+    "@types/react-dom": "latest",
+    "@types/express": "latest",
+    "@types/cookie-parser": "latest",
+    "@types/node": "latest",
+    "concurrently": "latest",
+    "tsx": "latest",
+    "vitest": "latest"
+  }
+}

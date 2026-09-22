@@ -1,0 +1,20 @@
+import { Navigate, Route, Routes } from 'react-router-dom'
+import { AppShell } from './components/AppShell'
+import { useApp } from './state/AppContext'
+import { AuthPage } from './pages/AuthPage'
+import { DashboardPage } from './pages/DashboardPage'
+import { DiagnosticPage } from './pages/DiagnosticPage'
+import { EssayPage } from './pages/EssayPage'
+import { LandingPage } from './pages/LandingPage'
+import { MainIdeasPage } from './pages/MainIdeasPage'
+import { ProfilePage } from './pages/ProfilePage'
+import { ProgressPage } from './pages/ProgressPage'
+import { ReadingPage } from './pages/ReadingPage'
+import { TopicsPage } from './pages/TopicsPage'
+import { VocabularyPage } from './pages/VocabularyPage'
+import { PasswordResetPage } from './pages/PasswordResetPage'
+import { IntegratedSummaryPage } from './pages/IntegratedSummaryPage'
+import { ThemeToggle } from './components/ThemeToggle'
+
+function Protected(){const{user,ready}=useApp();if(!ready)return <div className="app-loading"><span/><p>Loading your learning profile…</p></div>;return user?<AppShell/>:<Navigate to="/login" replace/>}
+export default function App(){return <><ThemeToggle/><Routes><Route path="/" element={<LandingPage/>}/><Route path="/login" element={<AuthPage mode="login"/>}/><Route path="/signup" element={<AuthPage mode="signup"/>}/><Route path="/password-reset" element={<PasswordResetPage/>}/><Route path="/diagnostic" element={<DiagnosticPage/>}/><Route path="/app" element={<Protected/>}><Route index element={<DashboardPage/>}/><Route path="grammar" element={<TopicsPage/>}/><Route path="complex-grammar" element={<TopicsPage advanced/>}/><Route path="vocabulary" element={<VocabularyPage/>}/><Route path="reading" element={<ReadingPage/>}/><Route path="main-ideas" element={<MainIdeasPage/>}/><Route path="integrated-summary" element={<IntegratedSummaryPage/>}/><Route path="essay" element={<EssayPage/>}/><Route path="progress" element={<ProgressPage/>}/><Route path="profile" element={<ProfilePage/>}/></Route><Route path="*" element={<Navigate to="/" replace/>}/></Routes></>}

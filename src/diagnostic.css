@@ -1,0 +1,6 @@
+.diagnostic-context{margin:18px 0 25px;padding:20px 22px;background:#fff;border:1px solid #dfe3dc;border-left:3px solid #708671;border-radius:10px}
+.diagnostic-context>span{display:block;margin-bottom:9px;font-size:9px;font-weight:800;letter-spacing:.13em;text-transform:uppercase;color:#718075}
+.diagnostic-context p{margin:0;color:#465048;font:15px/1.75 Georgia,serif}
+.diagnostic-context+h1{margin-top:0}
+
+@media(max-width:700px){.diagnostic-context{padding:16px;margin:15px 0 20px}.diagnostic-context p{font-size:14px;line-height:1.65}}

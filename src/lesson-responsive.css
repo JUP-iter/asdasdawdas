@@ -1,0 +1,9 @@
+@media (max-width: 700px) {
+  .lesson-hero { padding: 25px 22px; }
+  .lesson-hero h1 { font-size: 26px; }
+  .lesson-layout { grid-template-columns: 1fr; }
+  .lesson-examples > div { grid-template-columns: 1fr; }
+  .lesson-start { align-items: stretch; flex-direction: column; gap: 15px; }
+  .lesson-start .button { width: 100%; }
+  .result-insights { grid-template-columns: 1fr; }
+}
