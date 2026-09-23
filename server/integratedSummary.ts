@@ -370,7 +370,33 @@ function createPractice(blueprint:PracticeBlueprint,lens:typeof analyticalLenses
 }
 
 const generatedIntegratedSummaryTexts=practiceBlueprints.flatMap(blueprint=>analyticalLenses.map(lens=>createPractice(blueprint,lens)))
-export const integratedSummaryTexts:IntegratedSummaryText[]=[...coreIntegratedSummaryTexts,...generatedIntegratedSummaryTexts]
+
+function sourceExtension(text:IntegratedSummaryText,index:number){
+  const point=text.keyPoints[index%text.keyPoints.length]
+  const related=text.keyPoints[(index+1)%text.keyPoints.length]
+  const terms=point.keywords.slice(0,3).join(', ')
+  const subject=text.title.toLowerCase()
+  const extensions=[
+    `A closer examination of this ${text.topic.toLowerCase()} debate shows why ${subject} cannot be understood as a single technical choice. The relationship between ${terms} develops across institutions and over time, so a result observed in one location may not transfer directly to another. Historical investment, local capacity, and existing rules shape both the problem and the range of realistic responses. This wider context helps distinguish a promising idea from an intervention that can produce reliable public value under ordinary conditions.`,
+    `Assessing these proposed gains also requires a clear account of what improvement means and whose experience is being measured. Indicators linked to ${terms} may show immediate progress while missing indirect costs, delayed effects, or changes in quality. Researchers therefore need several measures rather than one convenient headline figure. They should also state the period of evaluation and the alternative against which results are compared, because an intervention can appear successful in isolation while performing no better than a less expensive or more accessible option.`,
+    `The evidence base becomes stronger when numerical trends are interpreted alongside the mechanisms that produced them. Data concerning ${terms} can identify patterns, but interviews, observation, and local records often explain why those patterns differ between groups or places. Studies should report uncertainty, missing data, and unsuccessful cases instead of presenting only average outcomes. This matters because ${related.label.charAt(0).toLowerCase()+related.label.slice(1)} Evidence that includes variation is more useful for policy than a single estimate detached from the conditions in which it was produced.`,
+    `Trade-offs are especially important when decisions affect several systems at once. Changes involving ${terms} may solve one visible difficulty while shifting expense, labour, or environmental pressure elsewhere. Some consequences appear quickly, whereas others emerge only after equipment ages, funding ends, or participation changes. Scenario analysis can help decision-makers compare these pathways and identify thresholds at which benefits begin to decline. It can also reveal whether a reversible trial is appropriate or whether early choices will create infrastructure and contracts that are difficult to change later.`,
+    `Distributional questions add another layer to the assessment. Access to information, time, finance, and decision-making power influences who can benefit from arrangements involving ${terms}. Groups described as stakeholders are not automatically represented simply because a consultation meeting occurs. Participation must be accessible, early enough to shape the proposal, and connected to a visible response from decision-makers. Monitoring should then separate outcomes by relevant population and place, since a positive average can coexist with serious disadvantages for people who already face the greatest barriers.`,
+    `Long-term delivery depends on routine institutional work that pilot projects often understate. Systems connected with ${terms} require trained staff, maintenance schedules, secure funding, data standards, and a clear process for correcting failures. Contracts should specify responsibility after suppliers change, while public reporting should explain performance in language that affected communities can use. Independent review is valuable when organisations have incentives to emphasise success. Without these arrangements, an effective early programme may weaken gradually even though the technology or policy continues to exist in name.`,
+    `For this reason, the central lesson is not that ${subject} should always be expanded or rejected. It is that decisions should connect ${terms} with the broader concerns identified throughout the source. Authorities need explicit objectives, comparable evidence, safeguards for affected groups, and opportunities to revise implementation as conditions change. Periodic evaluation should examine both intended results and unexpected consequences. Such an adaptive approach treats uncertainty as a reason for careful learning and accountability, rather than as an excuse either for permanent delay or for unsupported claims of success.`,
+  ]
+  return extensions[index%extensions.length]
+}
+
+function expandSourceText(text:IntegratedSummaryText):IntegratedSummaryText{
+  return{
+    ...text,
+    readingMinutes:text.readingMinutes*2,
+    paragraphs:text.paragraphs.map((paragraph,index)=>`${paragraph} ${sourceExtension(text,index)}`),
+  }
+}
+
+export const integratedSummaryTexts:IntegratedSummaryText[]=[...coreIntegratedSummaryTexts,...generatedIntegratedSummaryTexts].map(expandSourceText)
 
 const words=(value:string)=>(value.toLowerCase().match(/[a-z]+(?:'[a-z]+)?/g)??[])
 const sentences=(value:string)=>value.trim().split(/(?<=[.!?])\s+/).filter(Boolean)
