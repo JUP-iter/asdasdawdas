@@ -120,6 +120,9 @@ export interface IntegratedSummaryResult {
   mainIdeas:SummaryMainIdea[]
   evaluationMode:'ai'|'deterministic'
   evaluationModel?:string
+  selfCheck?:boolean
+  sourceTitle?:string
+  sourceText?:string
 }
 export interface SummaryAnnotation { start:number; end:number; type:'organization'|'language'|'source-use'|'opinion'; message:string }
 export interface SummaryMainIdea { label:string; paragraphIndex:number; keywords:string[] }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { evaluateIntegratedSummary, integratedSummaryTexts, publicIntegratedSummaryTexts } from './integratedSummary.js'
+import { createCustomIntegratedSummaryText, evaluateIntegratedSummary, integratedSummaryTexts, publicIntegratedSummaryTexts } from './integratedSummary.js'
 
 const passage=integratedSummaryTexts[0]
 const strongSummary=`Urban heat is an unequal challenge for cities because vulnerable and low-income communities often experience the highest temperatures with the fewest resources for protection. Trees can provide shade and improve air quality; however, species selection, water use, maintenance, and the time needed for growth limit their immediate value. Greening may also cause gentrification by increasing rents and displacing residents, so housing protection should accompany environmental improvements. Building measures such as reflective roofs, insulation, and external shading can reduce indoor heat and energy demand, although their effectiveness depends on climate and incentives for landlords. Furthermore, local data is necessary because city averages can hide severe conditions in particular streets and homes. Officials must combine measurements with residents’ priorities when deciding where support is most urgent. Overall, effective policy requires combined physical and social action: cities should use trees and building improvements alongside community participation, housing safeguards, cooling centres, and workplace protection rather than relying on one technical solution.`
@@ -61,5 +61,17 @@ describe('integrated summary rubric',()=>{
     expect(result.rubric.taskAchievement.score).toBeLessThanOrEqual(14)
     expect(result.flags.some(flag=>flag.includes('Personal opinion'))).toBe(true)
     expect(result.annotations.some(annotation=>annotation.type==='opinion')).toBe(true)
+  })
+
+  it('builds an assessable passage from a student-provided source text',()=>{
+    const custom=createCustomIntegratedSummaryText('My research text',passage.paragraphs.slice(0,4).join('\n\n'))
+    const result=evaluateIntegratedSummary(custom,strongSummary)
+    expect(custom.id).toBe('self-check')
+    expect(custom.title).toBe('My research text')
+    expect(custom.paragraphs).toHaveLength(4)
+    expect(custom.keyPoints).toHaveLength(4)
+    expect(custom.keyPoints.every(point=>point.label.length>0&&point.keywords.length>0)).toBe(true)
+    expect(result.maximum).toBe(40)
+    expect(result.mainIdeas).toHaveLength(custom.keyPoints.length)
   })
 })

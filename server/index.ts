@@ -12,7 +12,7 @@ import { createUser, ensureDatabase, getUserProfile, queryAll, queryOne, run, wr
 import { createSessionToken, hashPassword, hashToken, verifyPassword } from './security.js'
 import { sendPasswordResetEmail } from './email.js'
 import { calculateSkillUpdate } from './progress.js'
-import { evaluateIntegratedSummary, integratedSummaryTexts, publicIntegratedSummaryTexts, type IntegratedSummaryResult } from './integratedSummary.js'
+import { createCustomIntegratedSummaryText, evaluateIntegratedSummary, integratedSummaryTexts, publicIntegratedSummaryTexts, type IntegratedSummaryResult } from './integratedSummary.js'
 
 try { loadEnvFile() } catch { /* Environment variables may be supplied by the host. */ }
 
@@ -373,8 +373,8 @@ app.get('/api/integrated-summary/attempts', auth, asyncRoute(async (_req, res) =
     return {
       id: row.id,
       passageId: row.passage_id,
-      title: passage?.title ?? 'Integrated Skills Summary',
-      topic: passage?.topic ?? 'Academic reading',
+      title: passage?.title ?? result?.sourceTitle ?? 'Integrated Skills Summary',
+      topic: passage?.topic ?? (result?.selfCheck ? 'Self-check' : 'Academic reading'),
       response: row.response,
       score,
       percent: Number(result?.percent ?? Math.round(score / 40 * 100)),
@@ -399,6 +399,29 @@ app.post('/api/integrated-summary/evaluate', aiLimit, auth, asyncRoute(async (re
   }
   const baseline = evaluateIntegratedSummary(passage, parsed.data.answer)
   const result = await aiService.evaluateIntegratedSummary(passage, parsed.data.answer, baseline)
+  await run('INSERT INTO integrated_summaries(id,user_id,passage_id,response,result_json,score) VALUES(?,?,?,?,?,?)', [randomUUID(), res.locals.userId, passage.id, parsed.data.answer, JSON.stringify(result), result.total])
+  res.json(result)
+}))
+
+app.post('/api/integrated-summary/self-check', aiLimit, auth, asyncRoute(async (req, res) => {
+  const parsed = z.object({
+    title: z.string().trim().max(120).optional().default(''),
+    sourceText: z.string().trim().min(200).max(40_000),
+    answer: z.string().trim().min(50).max(5000),
+  }).safeParse(req.body)
+  if (!parsed.success) {
+    res.status(400).json({ error: 'Add a source text of at least 200 characters and a summary of at least 50 characters.' })
+    return
+  }
+  const passage = createCustomIntegratedSummaryText(parsed.data.title, parsed.data.sourceText)
+  const baseline = evaluateIntegratedSummary(passage, parsed.data.answer)
+  const reviewed = await aiService.evaluateIntegratedSummary(passage, parsed.data.answer, baseline)
+  const result: IntegratedSummaryResult = {
+    ...reviewed,
+    selfCheck: true,
+    sourceTitle: passage.title,
+    sourceText: parsed.data.sourceText,
+  }
   await run('INSERT INTO integrated_summaries(id,user_id,passage_id,response,result_json,score) VALUES(?,?,?,?,?,?)', [randomUUID(), res.locals.userId, passage.id, parsed.data.answer, JSON.stringify(result), result.total])
   res.json(result)
 }))

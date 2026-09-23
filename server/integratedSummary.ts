@@ -35,6 +35,9 @@ export interface IntegratedSummaryResult {
   mainIdeas:{label:string;paragraphIndex:number;keywords:string[]}[]
   evaluationMode:'ai'|'deterministic'
   evaluationModel?:string
+  selfCheck?:boolean
+  sourceTitle?:string
+  sourceText?:string
 }
 
 const coreIntegratedSummaryTexts:IntegratedSummaryText[]=[
@@ -400,6 +403,28 @@ export const integratedSummaryTexts:IntegratedSummaryText[]=[...coreIntegratedSu
 
 const words=(value:string)=>(value.toLowerCase().match(/[a-z]+(?:'[a-z]+)?/g)??[])
 const sentences=(value:string)=>value.trim().split(/(?<=[.!?])\s+/).filter(Boolean)
+const customStopWords=new Set(['about','after','again','against','also','among','because','before','being','between','both','could','does','during','each','from','have','having','into','itself','more','most','other','over','same','should','some','such','than','that','their','them','then','there','these','they','this','those','through','under','very','what','when','where','which','while','with','would','your'])
+
+export function createCustomIntegratedSummaryText(title:string,sourceText:string):IntegratedSummaryText{
+  const cleaned=sourceText.replace(/\r/g,'').trim()
+  let paragraphs=cleaned.split(/\n\s*\n/).map(item=>item.replace(/\s+/g,' ').trim()).filter(Boolean)
+  if(paragraphs.length===1){
+    const sourceSentences=sentences(cleaned)
+    if(sourceSentences.length>3){paragraphs=[];for(let index=0;index<sourceSentences.length;index+=3)paragraphs.push(sourceSentences.slice(index,index+3).join(' '))}
+  }
+  const pointCount=Math.min(6,paragraphs.length)
+  const indexes=pointCount<=1?[0]:Array.from({length:pointCount},(_,index)=>Math.round(index*(paragraphs.length-1)/(pointCount-1)))
+  const keyPoints=indexes.map(index=>{
+    const paragraph=paragraphs[index]
+    const frequencies=new Map<string,number>()
+    for(const word of words(paragraph)){if(word.length<5||customStopWords.has(word))continue;frequencies.set(word,(frequencies.get(word)??0)+1)}
+    const keywords=[...frequencies].sort((a,b)=>b[1]-a[1]||b[0].length-a[0].length).slice(0,7).map(([word])=>word)
+    const firstSentence=sentences(paragraph)[0]??paragraph
+    return{label:firstSentence.length>180?`${firstSentence.slice(0,177).trim()}…`:firstSentence,keywords}
+  })
+  const safeTitle=title.trim()||'Custom source text'
+  return{id:'self-check',title:safeTitle,subtitle:'Student-provided source for an independent rubric check',topic:'Self-check',level:'B2–C1',readingMinutes:Math.max(1,Math.ceil(words(cleaned).length/180)),sourceLabel:'Text supplied by the student',paragraphs,glossary:[],keyPoints}
+}
 const band=(score:number,max:number):RubricCriterion['band']=>{
   if(score===0)return'Insufficient sample'
   if(score/max<=.4)return'Weak'

@@ -38,6 +38,15 @@ function attemptDate(value:string){
   return Number.isNaN(date.getTime())?value:date.toLocaleString(undefined,{year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})
 }
 
+function customSourceParagraphs(value:string){
+  let paragraphs=value.trim().split(/\n\s*\n/).map(paragraph=>paragraph.replace(/\s+/g,' ').trim()).filter(Boolean)
+  if(paragraphs.length===1){
+    const sourceSentences=value.trim().split(/(?<=[.!?])\s+/).filter(Boolean)
+    if(sourceSentences.length>3){paragraphs=[];for(let index=0;index<sourceSentences.length;index+=3)paragraphs.push(sourceSentences.slice(index,index+3).join(' '))}
+  }
+  return paragraphs
+}
+
 function AttemptHistory({attempts,passageId}:{attempts:IntegratedSummaryAttempt[];passageId?:string}){
   const [expanded,setExpanded]=useState<string|null>(null)
   const visible=passageId?attempts.filter(attempt=>attempt.passageId===passageId):attempts
@@ -52,10 +61,17 @@ function AttemptHistory({attempts,passageId}:{attempts:IntegratedSummaryAttempt[
   </Card>
 }
 
+function SummaryModeSwitch({mode,onChange}:{mode:'practice'|'self-check';onChange:(mode:'practice'|'self-check')=>void}){
+  return <div className="summary-mode-switch" role="tablist" aria-label="Integrated summary mode"><button type="button" role="tab" aria-selected={mode==='practice'} className={mode==='practice'?'active':''} onClick={()=>onChange('practice')}><BookOpen/><span><strong>Practice Library</strong><small>Choose from 100 academic texts</small></span></button><button type="button" role="tab" aria-selected={mode==='self-check'} className={mode==='self-check'?'active':''} onClick={()=>onChange('self-check')}><ClipboardCheck/><span><strong>IS Summary Self-Checker</strong><small>Paste your own text and summary</small></span></button></div>
+}
+
 export function IntegratedSummaryPage(){
   const {user,recordActivity}=useApp()
   const [texts,setTexts]=useState<IntegratedSummaryText[]>([])
   const [attempts,setAttempts]=useState<IntegratedSummaryAttempt[]>([])
+  const [mode,setMode]=useState<'practice'|'self-check'>('practice')
+  const [customTitle,setCustomTitle]=useState('')
+  const [customSource,setCustomSource]=useState('')
   const [selected,setSelected]=useState<IntegratedSummaryText|null>(null)
   const [answer,setAnswer]=useState('')
   const [result,setResult]=useState<IntegratedSummaryResult|null>(null)
@@ -74,6 +90,7 @@ export function IntegratedSummaryPage(){
   const topics=['All',...new Set(texts.map(text=>text.topic))]
   const filteredTexts=texts.filter(text=>(topicFilter==='All'||text.topic===topicFilter)&&`${text.title} ${text.subtitle} ${text.topic}`.toLowerCase().includes(query.toLowerCase()))
   const visibleTexts=filteredTexts.slice(0,visibleCount)
+  const customSourceWords=customSource.trim()?customSource.trim().split(/\s+/).length:0
 
   useEffect(()=>{void(async()=>{
     const [textResponse,attemptResponse]=await Promise.allSettled([api.integratedSummaryTexts(),api.integratedSummaryAttempts()])
@@ -96,6 +113,20 @@ export function IntegratedSummaryPage(){
     finally{setEvaluating(false)}
   }
 
+  const evaluateSelfCheck=async()=>{
+    setEvaluating(true);setError('')
+    try{
+      const next=await api.selfCheckIntegratedSummary(customTitle,customSource,answer)
+      const title=customTitle.trim()||'Custom source text'
+      const paragraphs=customSourceParagraphs(customSource)
+      setSelected({id:'self-check',title,subtitle:'Student-provided source for an independent rubric check',topic:'Self-check',level:'B2–C1',readingMinutes:Math.max(1,Math.ceil(customSourceWords/180)),sourceLabel:'Text supplied by the student',paragraphs:paragraphs.length?paragraphs:[customSource.trim()],glossary:[]})
+      setResult(next)
+      void api.integratedSummaryAttempts().then(response=>setAttempts(response.attempts)).catch(()=>{/* The saved result remains available after a later refresh. */})
+      await recordActivity({kind:'IS Summary self-check',title,score:next.percent,xp:50+Math.round(next.total),mistakes:next.nextSteps,durationSeconds:Math.max(1,Math.round((Date.now()-startedAt.current)/1000))},'integratedSummary')
+    }catch(err){setError(err instanceof Error?err.message:'Unable to evaluate this summary.')}
+    finally{setEvaluating(false)}
+  }
+
   if(result&&selected)return <div className="integrated-page page-enter">
     <div className="integrated-result-head"><div><Badge tone="green"><ClipboardCheck size={13}/> Rubric evaluation complete</Badge><h1>{selected.title}</h1><p>Your result uses the 40-mark Integrated Skills Summary rubric. {result.evaluationMode==='ai'?`Reviewed with ${result.evaluationModel||'DeepSeek'}.`:'Local rubric fallback was used.'}</p></div><div className="integrated-total"><strong>{scoreLabel(result.total)}</strong><span>/ 40</span><small>{result.percent}%</small></div></div>
     <Card className="personal-feedback"><Sparkles/><div><span className="eyebrow">FEEDBACK FOR {user?.name?.toUpperCase()||'YOU'}</span><h2>Your next move is clear</h2><p>{result.feedback}</p></div></Card>
@@ -107,7 +138,18 @@ export function IntegratedSummaryPage(){
     <div className="review-action-buttons"><Button variant="secondary" onClick={()=>setShowImproved(value=>!value)}><Sparkles/> {showImproved?'Hide improved summary':'Show improved summary'}</Button><Button variant="secondary" onClick={()=>setShowMainIdeas(value=>!value)}><BookOpen/> {showMainIdeas?'Hide main ideas':'Show main ideas in source'}</Button></div>
     {showImproved&&<Card className="improved-summary-panel"><div><span className="eyebrow">MODEL REVISION</span><h2>An improved summary</h2><p>This is one strong version, not the only correct answer. Compare its selection, organization, and paraphrasing with yours.</p></div><blockquote>{result.improvedSummary}</blockquote><small>{result.improvedSummary.trim().split(/\s+/).length} words · generated from the assessed main ideas</small></Card>}
     {showMainIdeas&&<Card className="main-ideas-panel"><div><span className="eyebrow">SOURCE MAP</span><h2>Main ideas highlighted in the text</h2><p>Colored terms show where the evidence for each assessed main idea appears. The labels below each paragraph state the idea in concise form.</p></div><MainIdeaSource text={selected} ideas={result.mainIdeas}/></Card>}
-    <div className="integrated-result-actions"><Button variant="secondary" onClick={()=>{setResult(null);setShowImproved(false);setShowMainIdeas(false);startedAt.current=Date.now()}}><RotateCcw/> Revise this summary</Button><Button onClick={()=>{setSelected(null);setResult(null);setAnswer('');setShowImproved(false);setShowMainIdeas(false)}}>Choose another text <ArrowRight/></Button></div>
+    <div className="integrated-result-actions"><Button variant="secondary" onClick={()=>{setResult(null);setShowImproved(false);setShowMainIdeas(false);if(selected.id==='self-check')setSelected(null);startedAt.current=Date.now()}}><RotateCcw/> Revise this summary</Button><Button onClick={()=>{const wasSelfCheck=selected.id==='self-check';setSelected(null);setResult(null);setAnswer('');setShowImproved(false);setShowMainIdeas(false);if(wasSelfCheck){setCustomTitle('');setCustomSource('');setMode('self-check')}}}>{selected.id==='self-check'?'Start a new self-check':'Choose another text'} <ArrowRight/></Button></div>
+  </div>
+
+  if(mode==='self-check'&&!selected)return <div className="integrated-page self-check-page page-enter">
+    <div className="module-hero self-check-hero"><div className="module-icon"><ClipboardCheck/></div><div><span className="eyebrow">PASTE · COMPARE · IMPROVE</span><h1>IS Summary Self-Checker</h1><p>Paste any academic source text and your summary. The checker evaluates content selection, organization, language, paraphrasing, and format against the 40-mark rubric.</p></div><div className="module-stat"><span>40</span><small>rubric marks</small></div></div>
+    <SummaryModeSwitch mode={mode} onChange={next=>{setMode(next);setError('');startedAt.current=Date.now()}}/>
+    <Card className="self-check-instructions"><Sparkles/><div><strong>How it works</strong><p>Your source is used only to evaluate this submission. Add the complete text—not just its introduction—then paste your own 150–250 word, one-paragraph summary.</p></div><Badge tone="green">Saved to your history</Badge></Card>
+    <div className="self-check-grid">
+      <Card className="self-check-source"><div className="pane-heading"><div><span className="eyebrow">1 · SOURCE TEXT</span><h2>What did you read?</h2></div><small>{customSourceWords} words</small></div><label>Text title <input value={customTitle} maxLength={120} onChange={event=>setCustomTitle(event.target.value)} placeholder="Optional title"/></label><label>Full source text <textarea value={customSource} onChange={event=>setCustomSource(event.target.value)} placeholder="Paste the complete academic text here…" aria-label="Source text for self-check"/></label><div className="self-check-limit"><span className={customSource.trim().length>=200?'valid':''}>{customSource.trim().length.toLocaleString()} / 200 minimum characters</span><span>Maximum 40,000</span></div></Card>
+      <Card className="self-check-summary"><div className="pane-heading"><div><span className="eyebrow">2 · YOUR SUMMARY</span><h2>What did you write?</h2></div><small>One paragraph</small></div><textarea value={answer} onChange={event=>setAnswer(event.target.value)} placeholder="Paste your Integrated Skills Summary here…" aria-label="Summary for self-check"/><div className="summary-live-metrics"><span className={wordCount>=150&&wordCount<=250?'valid':wordCount>250?'invalid':''}>{wordCount} / 250 words</span><span className={paragraphCount===1?'valid':paragraphCount>1?'invalid':''}>{paragraphCount} paragraph{paragraphCount===1?'':'s'}</span></div><div className="self-check-rubric"><span><strong>20</strong> Task Achievement</span><span><strong>10</strong> Organization</span><span><strong>10</strong> Language</span></div>{error&&<div className="form-error"><AlertTriangle/> {error}</div>}<Button loading={evaluating} disabled={customSource.trim().length<200||answer.trim().length<50} onClick={evaluateSelfCheck}>{evaluating?<><LoaderCircle/>Comparing source and summary…</>:<>Check my summary <Sparkles/></>}</Button></Card>
+    </div>
+    <AttemptHistory attempts={attempts} passageId="self-check"/>
   </div>
 
   if(selected)return <div className="integrated-page integrated-workspace page-enter">
@@ -123,6 +165,7 @@ export function IntegratedSummaryPage(){
 
   return <div className="integrated-page page-enter">
     <div className="module-hero integrated-hero"><div className="module-icon"><FileText/></div><div><span className="eyebrow">READ · PARAPHRASE · SYNTHESIZE</span><h1>Integrated Skills Summary</h1><p>Read a substantial academic text and produce a focused one-paragraph summary under assessment-style conditions.</p></div><div className="module-stat"><span>{profile?.assessed?`${profile.score}%`:'—'}</span><small>{profile?.assessed?'rubric performance':'not assessed'}</small>{profile?.assessed&&<ProgressBar value={profile.score}/>}</div></div>
+    <SummaryModeSwitch mode={mode} onChange={next=>{setMode(next);setError('');startedAt.current=Date.now()}}/>
     <Card className="is-guide"><div className="guide-heading"><div><span className="eyebrow">VISUAL WRITING GUIDE</span><h2>How to build a strong IS summary</h2></div><p>Move from understanding to selection, then from paraphrasing to a single coherent paragraph.</p></div><div className="guide-flow"><div className="guide-step"><strong>1</strong><span>Skim</span><small>Use the title, subtitle, and opening and closing sentences to find the central focus.</small></div><div className="guide-arrow">→</div><div className="guide-step"><strong>2</strong><span>Map</span><small>Identify five or six essential ideas. Exclude examples, repetition, and minor detail.</small></div><div className="guide-arrow">→</div><div className="guide-step"><strong>3</strong><span>Paraphrase</span><small>Change vocabulary and sentence structure while keeping the author's meaning accurate.</small></div><div className="guide-arrow">→</div><div className="guide-step"><strong>4</strong><span>Connect</span><small>Arrange ideas logically and link them with precise transitions.</small></div><div className="guide-arrow">→</div><div className="guide-step"><strong>5</strong><span>Check</span><small>Keep one paragraph and 150–250 words; remove opinion and copied phrasing.</small></div></div><div className="guide-blueprint"><div className="guide-paragraph"><mark className="guide-topic">Topic sentence: name the text's central claim.</mark> <mark className="guide-ideas">Main ideas: develop only the essential points in a logical sequence, using your own language and clear connections.</mark> <mark className="guide-conclusion">Conclusion: restate the overall significance without adding a personal view.</mark></div><div className="guide-score-map"><span><strong>20</strong> Content & source use</span><span><strong>10</strong> Organization</span><span><strong>10</strong> Language</span></div></div></Card>
     <div className="integrated-rubric-overview"><Card><strong>20</strong><div><span>Task Achievement</span><small>Main ideas, relevance, word limit, and source use</small></div></Card><Card><strong>10</strong><div><span>Organization</span><small>Topic sentence, logical order, cohesion, and conclusion</small></div></Card><Card><strong>10</strong><div><span>Language</span><small>Academic range, accuracy, paraphrasing, and summarising</small></div></Card></div>
     <AttemptHistory attempts={attempts}/>

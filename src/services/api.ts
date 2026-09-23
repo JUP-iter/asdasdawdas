@@ -26,5 +26,6 @@ export const api={
   integratedSummaryTexts:()=>request<{texts:IntegratedSummaryText[]}>('/integrated-summary/texts'),
   integratedSummaryAttempts:()=>request<{attempts:IntegratedSummaryAttempt[]}>('/integrated-summary/attempts'),
   evaluateIntegratedSummary:(passageId:string,answer:string)=>request<IntegratedSummaryResult>('/integrated-summary/evaluate',{method:'POST',body:JSON.stringify({passageId,answer})}),
+  selfCheckIntegratedSummary:(title:string,sourceText:string,answer:string)=>request<IntegratedSummaryResult>('/integrated-summary/self-check',{method:'POST',body:JSON.stringify({title,sourceText,answer}),signal:AbortSignal.timeout(70_000)}),
   recommendation:()=>request<{recommendation:LearningRecommendation}>('/recommendations'),
 }
