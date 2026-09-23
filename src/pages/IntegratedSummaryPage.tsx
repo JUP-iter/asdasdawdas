@@ -1,6 +1,7 @@
 import { AlertTriangle, ArrowLeft, ArrowRight, BookOpen, CheckCircle2, ClipboardCheck, Clock3, FileText, Layers3, LoaderCircle, RotateCcw, Search, Sparkles } from 'lucide-react'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Badge, Button, Card, ProgressBar } from '../components/ui'
+import { SourceReader } from '../components/SourceReader'
 import { api } from '../services/api'
 import { useApp } from '../state/AppContext'
 import type { IntegratedSummaryResult, IntegratedSummaryText, SummaryAnnotation, SummaryMainIdea } from '../types'
@@ -86,7 +87,7 @@ export function IntegratedSummaryPage(){
     <div className="integrated-work-head"><div><Badge tone="blue">{selected.topic}</Badge><h1>{selected.title}</h1><h2>{selected.subtitle}</h2><p>{selected.sourceLabel}</p></div><div><span><Clock3/> {selected.readingMinutes} min reading</span><span><Layers3/> {selected.level}</span></div></div>
     <Card className="assessment-brief"><ClipboardCheck/><div><strong>Assessment format</strong><p>Write one academic paragraph of 150–250 words. Include the main ideas in your own words, begin with a topic sentence, end with a concluding sentence, and do not add personal opinions.</p></div><Badge>40 marks · 10% weighting · 100 min</Badge></Card>
     <div className="integrated-editor-grid">
-      <Card className="source-pane"><div className="pane-heading"><span className="eyebrow">SOURCE TEXT</span><small>Read, skim, and identify main ideas</small></div><article>{selected.paragraphs.map((paragraph,index)=><p key={index}>{paragraph}</p>)}</article><div className="summary-glossary"><h3>Glossary</h3>{selected.glossary.map(item=><div key={item.term}><strong>{item.term}</strong><span>{item.definition}</span></div>)}</div></Card>
+      <SourceReader text={selected} storageScope={user?.id}/>
       <Card className="summary-pane"><div className="pane-heading"><span className="eyebrow">YOUR SUMMARY</span><small>Use your own words</small></div><textarea value={answer} onChange={event=>setAnswer(event.target.value)} placeholder="Write your one-paragraph academic summary here…" aria-label="Integrated skills summary response"/><div className="summary-live-metrics"><span className={wordCount>=150&&wordCount<=250?'valid':wordCount>250?'invalid':''}>{wordCount} / 250 words</span><span className={paragraphCount===1?'valid':paragraphCount>1?'invalid':''}>{paragraphCount} paragraph{paragraphCount===1?'':'s'}</span></div><div className="summary-checklist"><strong>Before submitting</strong><span className={wordCount>=150&&wordCount<=250?'done':''}><CheckCircle2/> 150–250 words</span><span className={paragraphCount===1?'done':''}><CheckCircle2/> One paragraph</span><span><CheckCircle2/> Topic sentence and conclusion</span><span><CheckCircle2/> Main ideas paraphrased</span><span><CheckCircle2/> No personal opinion</span></div>{error&&<div className="form-error"><AlertTriangle/> {error}</div>}<Button loading={evaluating} disabled={answer.trim().length<50} onClick={evaluate}>{evaluating?<><LoaderCircle/>Evaluating against rubric…</>:<>Evaluate my summary <Sparkles/></>}</Button></Card>
     </div>
   </div>

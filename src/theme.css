@@ -223,6 +223,30 @@
 [data-theme='dark'] .level-rings text { fill: var(--night-text); }
 [data-theme='dark'] .level-rings text:last-child { fill: var(--night-muted); }
 
+[data-theme='dark'] .reader-controls button { background: #17212a; color: #cbd8d2; border-color: #34434e; }
+[data-theme='dark'] .reader-controls button:hover { background: #202d37; border-color: #50616c; }
+[data-theme='dark'] .reader-status { background: #101a20; color: #9caca5; }
+[data-theme='dark'] .reader-status svg { color: var(--night-accent); }
+[data-theme='dark'] .reader-notebook { border-color: var(--night-border); }
+[data-theme='dark'] .reader-notebook-title > svg { color: var(--night-accent); }
+[data-theme='dark'] .reader-notebook-title span { color: #83928c; }
+[data-theme='dark'] .reader-notebook > textarea,
+[data-theme='dark'] .reader-highlight-card textarea { background: #0e151d !important; border-color: #34434e !important; }
+[data-theme='dark'] .reader-highlights-head span { background: #202d35; color: #c1cec8; }
+[data-theme='dark'] .reader-empty-highlights { border-color: #35434d; color: #84938d !important; }
+[data-theme='dark'] .reader-highlight-card { background: #111a21; border-color: #2e3b45; }
+[data-theme='dark'] .reader-highlight-card > div span { color: #c8d3ce; }
+[data-theme='dark'] .reader-highlight-card > div button { color: #87958f; }
+[data-theme='dark'] .reader-highlight-card > div button:hover { background: #3b2526; color: #efb4ad; }
+[data-theme='dark'] .reader-highlight { color: #111713; }
+[data-theme='dark'] .reader-comment-backdrop { background: rgba(3, 7, 10, .72); }
+[data-theme='dark'] .reader-comment-composer { background: var(--night-surface); color: var(--night-text); border-color: var(--night-border-strong); }
+[data-theme='dark'] .reader-comment-composer blockquote { background: #0f181e; color: #c5d0cb; border-color: var(--night-accent-strong); }
+[data-theme='dark'] .reader-comment-composer > div:last-child button { background: #17212a; color: var(--night-text); border-color: #394954; }
+[data-theme='dark'] .reader-comment-composer > div:last-child .save-reader-comment { background: var(--night-accent); color: #0a1510; border-color: var(--night-accent); }
+[data-theme='dark'] .comment-colors button.selected { border-color: #e8f1ed; box-shadow:0 0 0 2px #17212a inset; }
+[data-theme='dark'] .source-pane-fullscreen .reader-notebook { border-color: var(--night-border); }
+
 @media (max-width: 760px) {
   .theme-toggle { right: 14px; bottom: 76px; width: 40px; padding: 0; justify-content: center; }
   .theme-toggle span { display: none; }
