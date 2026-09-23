@@ -12,7 +12,7 @@ export function ThemeToggle(){
     document.documentElement.dataset.theme=next
     document.documentElement.style.colorScheme=next
     try{localStorage.setItem('madebyaibek-theme',next)}catch{/* Theme still changes when browser storage is unavailable. */}
-    document.querySelector('meta[name="theme-color"]')?.setAttribute('content',next==='dark'?'#101713':'#f6f7f3')
+    document.querySelector('meta[name="theme-color"]')?.setAttribute('content',next==='dark'?'#0a0f15':'#f6f7f3')
     setTheme(next)
   }
   const dark=theme==='dark'
