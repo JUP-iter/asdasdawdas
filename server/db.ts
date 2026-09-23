@@ -48,6 +48,7 @@ const schema=[
   `CREATE TABLE IF NOT EXISTS integrated_summaries (id TEXT PRIMARY KEY,user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,passage_id TEXT NOT NULL,response TEXT NOT NULL,result_json TEXT NOT NULL,score REAL NOT NULL,created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)`,
   `CREATE TABLE IF NOT EXISTS password_reset_tokens (token_hash TEXT PRIMARY KEY,user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,expires_at TEXT NOT NULL,used_at TEXT,created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)`,
   `CREATE INDEX IF NOT EXISTS idx_attempts_user_date ON exercise_attempts(user_id,created_at DESC)`,
+  `CREATE INDEX IF NOT EXISTS idx_integrated_summaries_user_date ON integrated_summaries(user_id,created_at DESC)`,
   `CREATE INDEX IF NOT EXISTS idx_sessions_expiry ON sessions(expires_at)`,
   `INSERT OR IGNORE INTO migrations(version) VALUES (1)`,
 ]

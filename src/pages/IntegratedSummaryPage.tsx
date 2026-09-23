@@ -1,10 +1,10 @@
-import { AlertTriangle, ArrowLeft, ArrowRight, BookOpen, CheckCircle2, ClipboardCheck, Clock3, FileText, Layers3, LoaderCircle, RotateCcw, Search, Sparkles } from 'lucide-react'
+import { AlertTriangle, ArrowLeft, ArrowRight, BookOpen, CheckCircle2, ChevronDown, ChevronUp, ClipboardCheck, Clock3, FileText, History, Layers3, LoaderCircle, RotateCcw, Search, Sparkles } from 'lucide-react'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Badge, Button, Card, ProgressBar } from '../components/ui'
 import { SourceReader } from '../components/SourceReader'
 import { api } from '../services/api'
 import { useApp } from '../state/AppContext'
-import type { IntegratedSummaryResult, IntegratedSummaryText, SummaryAnnotation, SummaryMainIdea } from '../types'
+import type { IntegratedSummaryAttempt, IntegratedSummaryResult, IntegratedSummaryText, SummaryAnnotation, SummaryMainIdea } from '../types'
 
 const scoreLabel=(score:number)=>Number.isInteger(score)?String(score):score.toFixed(1)
 
@@ -32,9 +32,30 @@ function MainIdeaSource({text,ideas}:{text:IntegratedSummaryText;ideas:SummaryMa
   return <div className="main-idea-source">{text.paragraphs.map((paragraph,index)=>{const paragraphIdeas=ideas.filter(idea=>idea.paragraphIndex===index);const terms=paragraphIdeas.flatMap(idea=>idea.keywords);return <article className={paragraphIdeas.length?'contains-main-idea':''} key={index}>{paragraphIdeas.length>0&&<div>{paragraphIdeas.map(idea=><Badge tone="green" key={idea.label}>Main idea {ideas.indexOf(idea)+1}</Badge>)}</div>}<p>{highlightedTerms(paragraph,terms)}</p>{paragraphIdeas.map(idea=><small key={idea.label}>{idea.label}</small>)}</article>})}</div>
 }
 
+function attemptDate(value:string){
+  const normalized=value.includes('T')?value:`${value.replace(' ','T')}Z`
+  const date=new Date(normalized)
+  return Number.isNaN(date.getTime())?value:date.toLocaleString(undefined,{year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})
+}
+
+function AttemptHistory({attempts,passageId}:{attempts:IntegratedSummaryAttempt[];passageId?:string}){
+  const [expanded,setExpanded]=useState<string|null>(null)
+  const visible=passageId?attempts.filter(attempt=>attempt.passageId===passageId):attempts
+  if(!visible.length)return null
+  const average=Math.round(visible.reduce((sum,attempt)=>sum+attempt.percent,0)/visible.length)
+  return <Card className={`integrated-attempt-history${passageId?' compact':''}`}>
+    <div className="attempt-history-heading"><div><History/><div><span className="eyebrow">SAVED RESULTS</span><h2>{passageId?'Previous attempts for this text':'Your previous attempts'}</h2><p>Every assessed submission is kept with its score and feedback.</p></div></div><div className="attempt-history-stats"><span><strong>{visible.length}</strong> attempt{visible.length===1?'':'s'}</span><span><strong>{average}%</strong> average</span></div></div>
+    <div className="attempt-history-list">{visible.map(attempt=>{const isOpen=expanded===attempt.id;return <article className={isOpen?'open':''} key={attempt.id}>
+      <button type="button" onClick={()=>setExpanded(isOpen?null:attempt.id)} aria-expanded={isOpen}><div><Badge tone={attempt.percent>=75?'green':attempt.percent>=50?'amber':'neutral'}>{attempt.topic}</Badge><strong>{attempt.title}</strong><small>{attemptDate(attempt.createdAt)} · {attempt.wordCount} words</small></div><div className="attempt-score"><strong>{scoreLabel(attempt.score)}<small>/40</small></strong><span>{attempt.percent}%</span></div>{isOpen?<ChevronUp/>:<ChevronDown/>}</button>
+      {isOpen&&<div className="attempt-history-detail">{attempt.result&&<div className="attempt-rubric-breakdown"><span>Task Achievement <strong>{scoreLabel(attempt.result.rubric.taskAchievement.score)}/20</strong></span><span>Organization <strong>{scoreLabel(attempt.result.rubric.organization.score)}/10</strong></span><span>Language <strong>{scoreLabel(attempt.result.rubric.language.score)}/10</strong></span></div>}<div><span className="eyebrow">SAVED RESPONSE</span><p>{attempt.response}</p></div>{attempt.result&&<div className="attempt-feedback"><span className="eyebrow">FEEDBACK</span><p>{attempt.result.feedback}</p></div>}</div>}
+    </article>})}</div>
+  </Card>
+}
+
 export function IntegratedSummaryPage(){
   const {user,recordActivity}=useApp()
   const [texts,setTexts]=useState<IntegratedSummaryText[]>([])
+  const [attempts,setAttempts]=useState<IntegratedSummaryAttempt[]>([])
   const [selected,setSelected]=useState<IntegratedSummaryText|null>(null)
   const [answer,setAnswer]=useState('')
   const [result,setResult]=useState<IntegratedSummaryResult|null>(null)
@@ -54,7 +75,13 @@ export function IntegratedSummaryPage(){
   const filteredTexts=texts.filter(text=>(topicFilter==='All'||text.topic===topicFilter)&&`${text.title} ${text.subtitle} ${text.topic}`.toLowerCase().includes(query.toLowerCase()))
   const visibleTexts=filteredTexts.slice(0,visibleCount)
 
-  useEffect(()=>{api.integratedSummaryTexts().then(response=>setTexts(response.texts)).catch(err=>setError(err instanceof Error?err.message:'Unable to load practice texts.')).finally(()=>setLoading(false))},[])
+  useEffect(()=>{void(async()=>{
+    const [textResponse,attemptResponse]=await Promise.allSettled([api.integratedSummaryTexts(),api.integratedSummaryAttempts()])
+    if(textResponse.status==='fulfilled')setTexts(textResponse.value.texts)
+    else setError(textResponse.reason instanceof Error?textResponse.reason.message:'Unable to load practice texts.')
+    if(attemptResponse.status==='fulfilled')setAttempts(attemptResponse.value.attempts)
+    setLoading(false)
+  })()},[])
 
   const openText=(text:IntegratedSummaryText)=>{setSelected(text);setAnswer('');setResult(null);setError('');setShowImproved(false);setShowMainIdeas(false);startedAt.current=Date.now()}
   const evaluate=async()=>{
@@ -63,6 +90,7 @@ export function IntegratedSummaryPage(){
     try{
       const next=await api.evaluateIntegratedSummary(selected.id,answer)
       setResult(next)
+      void api.integratedSummaryAttempts().then(response=>setAttempts(response.attempts)).catch(()=>{/* The saved result remains available after a later refresh. */})
       await recordActivity({kind:'Integrated summary',title:selected.title,score:next.percent,xp:50+Math.round(next.total),mistakes:next.nextSteps,durationSeconds:Math.max(1,Math.round((Date.now()-startedAt.current)/1000))},'integratedSummary')
     }catch(err){setError(err instanceof Error?err.message:'Unable to evaluate this summary.')}
     finally{setEvaluating(false)}
@@ -86,6 +114,7 @@ export function IntegratedSummaryPage(){
     <button className="lesson-back" onClick={()=>setSelected(null)}><ArrowLeft/> All practice texts</button>
     <div className="integrated-work-head"><div><Badge tone="blue">{selected.topic}</Badge><h1>{selected.title}</h1><h2>{selected.subtitle}</h2><p>{selected.sourceLabel}</p></div><div><span><Clock3/> {selected.readingMinutes} min reading</span><span><Layers3/> {selected.level}</span></div></div>
     <Card className="assessment-brief"><ClipboardCheck/><div><strong>Assessment format</strong><p>Write one academic paragraph of 150–250 words. Include the main ideas in your own words, begin with a topic sentence, end with a concluding sentence, and do not add personal opinions.</p></div><Badge>40 marks · 10% weighting · 100 min</Badge></Card>
+    <AttemptHistory attempts={attempts} passageId={selected.id}/>
     <div className="integrated-editor-grid">
       <SourceReader text={selected} storageScope={user?.id}/>
       <Card className="summary-pane"><div className="pane-heading"><span className="eyebrow">YOUR SUMMARY</span><small>Use your own words</small></div><textarea value={answer} onChange={event=>setAnswer(event.target.value)} placeholder="Write your one-paragraph academic summary here…" aria-label="Integrated skills summary response"/><div className="summary-live-metrics"><span className={wordCount>=150&&wordCount<=250?'valid':wordCount>250?'invalid':''}>{wordCount} / 250 words</span><span className={paragraphCount===1?'valid':paragraphCount>1?'invalid':''}>{paragraphCount} paragraph{paragraphCount===1?'':'s'}</span></div><div className="summary-checklist"><strong>Before submitting</strong><span className={wordCount>=150&&wordCount<=250?'done':''}><CheckCircle2/> 150–250 words</span><span className={paragraphCount===1?'done':''}><CheckCircle2/> One paragraph</span><span><CheckCircle2/> Topic sentence and conclusion</span><span><CheckCircle2/> Main ideas paraphrased</span><span><CheckCircle2/> No personal opinion</span></div>{error&&<div className="form-error"><AlertTriangle/> {error}</div>}<Button loading={evaluating} disabled={answer.trim().length<50} onClick={evaluate}>{evaluating?<><LoaderCircle/>Evaluating against rubric…</>:<>Evaluate my summary <Sparkles/></>}</Button></Card>
@@ -96,6 +125,7 @@ export function IntegratedSummaryPage(){
     <div className="module-hero integrated-hero"><div className="module-icon"><FileText/></div><div><span className="eyebrow">READ · PARAPHRASE · SYNTHESIZE</span><h1>Integrated Skills Summary</h1><p>Read a substantial academic text and produce a focused one-paragraph summary under assessment-style conditions.</p></div><div className="module-stat"><span>{profile?.assessed?`${profile.score}%`:'—'}</span><small>{profile?.assessed?'rubric performance':'not assessed'}</small>{profile?.assessed&&<ProgressBar value={profile.score}/>}</div></div>
     <Card className="is-guide"><div className="guide-heading"><div><span className="eyebrow">VISUAL WRITING GUIDE</span><h2>How to build a strong IS summary</h2></div><p>Move from understanding to selection, then from paraphrasing to a single coherent paragraph.</p></div><div className="guide-flow"><div className="guide-step"><strong>1</strong><span>Skim</span><small>Use the title, subtitle, and opening and closing sentences to find the central focus.</small></div><div className="guide-arrow">→</div><div className="guide-step"><strong>2</strong><span>Map</span><small>Identify five or six essential ideas. Exclude examples, repetition, and minor detail.</small></div><div className="guide-arrow">→</div><div className="guide-step"><strong>3</strong><span>Paraphrase</span><small>Change vocabulary and sentence structure while keeping the author's meaning accurate.</small></div><div className="guide-arrow">→</div><div className="guide-step"><strong>4</strong><span>Connect</span><small>Arrange ideas logically and link them with precise transitions.</small></div><div className="guide-arrow">→</div><div className="guide-step"><strong>5</strong><span>Check</span><small>Keep one paragraph and 150–250 words; remove opinion and copied phrasing.</small></div></div><div className="guide-blueprint"><div className="guide-paragraph"><mark className="guide-topic">Topic sentence: name the text's central claim.</mark> <mark className="guide-ideas">Main ideas: develop only the essential points in a logical sequence, using your own language and clear connections.</mark> <mark className="guide-conclusion">Conclusion: restate the overall significance without adding a personal view.</mark></div><div className="guide-score-map"><span><strong>20</strong> Content & source use</span><span><strong>10</strong> Organization</span><span><strong>10</strong> Language</span></div></div></Card>
     <div className="integrated-rubric-overview"><Card><strong>20</strong><div><span>Task Achievement</span><small>Main ideas, relevance, word limit, and source use</small></div></Card><Card><strong>10</strong><div><span>Organization</span><small>Topic sentence, logical order, cohesion, and conclusion</small></div></Card><Card><strong>10</strong><div><span>Language</span><small>Academic range, accuracy, paraphrasing, and summarising</small></div></Card></div>
+    <AttemptHistory attempts={attempts}/>
     <div className="integrated-guidance"><div><span className="eyebrow">ASSESSMENT GUIDANCE</span><h2>Practice the complete task—not a sample essay</h2></div><p>Each option contains a different original academic reading, glossary, writing workspace, format checks, overlap detection, and criterion-level feedback based on the supplied 2026–27 rubric.</p></div>
     {!loading&&texts.length>0&&<div className="integrated-library-tools"><label><Search/><input value={query} onChange={event=>{setQuery(event.target.value);setVisibleCount(12)}} placeholder="Search 100 practices" aria-label="Search integrated summary practices"/></label><select value={topicFilter} onChange={event=>{setTopicFilter(event.target.value);setVisibleCount(12)}} aria-label="Filter by subject"><option value="All">All subjects</option>{topics.slice(1).map(topic=><option key={topic} value={topic}>{topic}</option>)}</select><span>{filteredTexts.length} practice{filteredTexts.length===1?'':'s'}</span></div>}
     {loading?<Card className="integrated-loading"><LoaderCircle/> Loading practice texts…</Card>:error?<div className="form-error">{error}</div>:filteredTexts.length?<><div className="integrated-text-grid">{visibleTexts.map((text,index)=><Card key={text.id} className="integrated-text-card"><div className={`integrated-cover cover-${index%3}`}><FileText/><Badge>{text.topic}</Badge></div><div><span className="eyebrow">PRACTICE SET {String(texts.indexOf(text)+1).padStart(2,'0')}</span><h2>{text.title}</h2><h3>{text.subtitle}</h3><p>{text.paragraphs[0].slice(0,130)}…</p><div className="integrated-text-meta"><span><Clock3/> {text.readingMinutes} min</span><span><BookOpen/> {text.paragraphs.length} sections</span><span>{text.level}</span></div><Button onClick={()=>openText(text)}>Open assessment <ArrowRight/></Button></div></Card>)}</div>{visibleCount<filteredTexts.length&&<div className="integrated-load-more"><Button variant="secondary" onClick={()=>setVisibleCount(count=>count+12)}>Load 12 more practices</Button></div>}</>:<Card className="integrated-loading"><Search/> No practices match this search.</Card>}

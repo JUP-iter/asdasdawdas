@@ -123,5 +123,17 @@ export interface IntegratedSummaryResult {
 }
 export interface SummaryAnnotation { start:number; end:number; type:'organization'|'language'|'source-use'|'opinion'; message:string }
 export interface SummaryMainIdea { label:string; paragraphIndex:number; keywords:string[] }
+export interface IntegratedSummaryAttempt {
+  id:string
+  passageId:string
+  title:string
+  topic:string
+  response:string
+  score:number
+  percent:number
+  wordCount:number
+  createdAt:string
+  result:IntegratedSummaryResult|null
+}
 export interface LearningRecommendation { skill: string; title: string; reason: string }
 export interface EssayRecord { id:string; prompt:string; score:number; createdAt:string; summary:string }

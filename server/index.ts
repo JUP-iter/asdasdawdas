@@ -12,7 +12,7 @@ import { createUser, ensureDatabase, getUserProfile, queryAll, queryOne, run, wr
 import { createSessionToken, hashPassword, hashToken, verifyPassword } from './security.js'
 import { sendPasswordResetEmail } from './email.js'
 import { calculateSkillUpdate } from './progress.js'
-import { evaluateIntegratedSummary, integratedSummaryTexts, publicIntegratedSummaryTexts } from './integratedSummary.js'
+import { evaluateIntegratedSummary, integratedSummaryTexts, publicIntegratedSummaryTexts, type IntegratedSummaryResult } from './integratedSummary.js'
 
 try { loadEnvFile() } catch { /* Environment variables may be supplied by the host. */ }
 
@@ -352,6 +352,39 @@ app.post('/api/ai/main-idea', aiLimit, auth, asyncRoute(async (req, res) => {
 app.get('/api/integrated-summary/texts', auth, (_req, res) => {
   res.json({ texts: publicIntegratedSummaryTexts() })
 })
+
+app.get('/api/integrated-summary/attempts', auth, asyncRoute(async (_req, res) => {
+  const rows = await queryAll<{
+    id: string
+    passage_id: string
+    response: string
+    result_json: string
+    score: number
+    created_at: string
+  }>(
+    'SELECT id,passage_id,response,result_json,score,created_at FROM integrated_summaries WHERE user_id=? ORDER BY created_at DESC',
+    [res.locals.userId],
+  )
+  const attempts = rows.map((row) => {
+    const passage = integratedSummaryTexts.find((item) => item.id === row.passage_id)
+    let result: IntegratedSummaryResult | null = null
+    try { result = JSON.parse(row.result_json) as IntegratedSummaryResult } catch { /* Keep legacy attempts visible. */ }
+    const score = Number(row.score)
+    return {
+      id: row.id,
+      passageId: row.passage_id,
+      title: passage?.title ?? 'Integrated Skills Summary',
+      topic: passage?.topic ?? 'Academic reading',
+      response: row.response,
+      score,
+      percent: Number(result?.percent ?? Math.round(score / 40 * 100)),
+      wordCount: Number(result?.wordCount ?? row.response.trim().split(/\s+/).length),
+      createdAt: row.created_at,
+      result,
+    }
+  })
+  res.json({ attempts })
+}))
 
 app.post('/api/integrated-summary/evaluate', aiLimit, auth, asyncRoute(async (req, res) => {
   const parsed = z.object({ passageId: z.string().min(1), answer: z.string().min(50).max(5000) }).safeParse(req.body)

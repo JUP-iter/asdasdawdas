@@ -246,6 +246,24 @@
 [data-theme='dark'] .reader-comment-composer > div:last-child .save-reader-comment { background: var(--night-accent); color: #0a1510; border-color: var(--night-accent); }
 [data-theme='dark'] .comment-colors button.selected { border-color: #e8f1ed; box-shadow:0 0 0 2px #17212a inset; }
 [data-theme='dark'] .source-pane-fullscreen .reader-notebook { border-color: var(--night-border); }
+[data-theme='dark'] .attempt-history-heading { background: #111b21; border-color: var(--night-border); }
+[data-theme='dark'] .attempt-history-heading p,
+[data-theme='dark'] .attempt-history-list > article > button > div:first-child > small { color: var(--night-muted); }
+[data-theme='dark'] .attempt-history-heading > div:first-child > svg { color: var(--night-accent); }
+[data-theme='dark'] .attempt-history-stats span { background: #1a2730; border-color: #35444e; color: #91a099; }
+[data-theme='dark'] .attempt-history-stats strong,
+[data-theme='dark'] .attempt-score > strong { color: #b6d4bd; }
+[data-theme='dark'] .attempt-history-list > article { border-color: var(--night-border); }
+[data-theme='dark'] .attempt-history-list > article > button:hover,
+[data-theme='dark'] .attempt-history-list > article.open > button,
+[data-theme='dark'] .attempt-history-detail { background: #0f171e; }
+[data-theme='dark'] .attempt-score > span { background: #1b3027; color: #add2b5; }
+[data-theme='dark'] .attempt-rubric-breakdown span,
+[data-theme='dark'] .attempt-history-detail > div:not(.attempt-rubric-breakdown) { background: #17222a; border-color: #34434d; }
+[data-theme='dark'] .attempt-rubric-breakdown span { color: #a8b5af; }
+[data-theme='dark'] .attempt-rubric-breakdown strong,
+[data-theme='dark'] .attempt-history-detail p { color: #d6e0db; }
+[data-theme='dark'] .attempt-history-detail .attempt-feedback p { color: #b2beb8; }
 
 @media (max-width: 760px) {
   .theme-toggle { right: 14px; bottom: 76px; width: 40px; padding: 0; justify-content: center; }

@@ -1,4 +1,4 @@
-import type { ActivityInput, EssayAnalysis, EssayRecord, IntegratedSummaryResult, IntegratedSummaryText, LearningRecommendation, SkillKey, UserProfile } from '../types'
+import type { ActivityInput, EssayAnalysis, EssayRecord, IntegratedSummaryAttempt, IntegratedSummaryResult, IntegratedSummaryText, LearningRecommendation, SkillKey, UserProfile } from '../types'
 
 async function request<T>(path:string, options:RequestInit={}) {
   const response=await fetch(`/api${path}`,{...options,signal:options.signal??AbortSignal.timeout(20000),credentials:'include',headers:{'content-type':'application/json',...options.headers}})
@@ -24,6 +24,7 @@ export const api={
   essays:()=>request<{essays:EssayRecord[]}>('/essays'),
   mainIdea:(answer:string,expected:string)=>request<{score:number;feedback:string}>('/ai/main-idea',{method:'POST',body:JSON.stringify({answer,expected})}),
   integratedSummaryTexts:()=>request<{texts:IntegratedSummaryText[]}>('/integrated-summary/texts'),
+  integratedSummaryAttempts:()=>request<{attempts:IntegratedSummaryAttempt[]}>('/integrated-summary/attempts'),
   evaluateIntegratedSummary:(passageId:string,answer:string)=>request<IntegratedSummaryResult>('/integrated-summary/evaluate',{method:'POST',body:JSON.stringify({passageId,answer})}),
   recommendation:()=>request<{recommendation:LearningRecommendation}>('/recommendations'),
 }
